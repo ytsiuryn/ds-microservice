@@ -17,7 +17,7 @@ type Dispatcher interface {
 type BaseDispatcher struct {
 	msgs      <-chan amqp.Delivery
 	service   Microservice
-	logger    ServiceLogRepresenter
+	repr      ServiceLogRepresenter
 	requester Requester
 }
 
@@ -41,14 +41,14 @@ func (d *BaseDispatcher) Dispatch() {
 				d.service.ErrorResult(&delivery, err, "Message dispatcher")
 				continue
 			}
-			if d.logger != nil {
-				d.logger.LogRequest(d.requester)
+			if d.repr != nil {
+				d.repr.LogRequest(d.requester)
 			}
 			d.service.RunCmd(d.requester, &delivery)
 		}
 	}()
-	if d.logger != nil {
-		d.logger.Info("Awaiting RPC requests")
+	if d.repr != nil {
+		d.repr.Logger().Info("Awaiting RPC requests")
 	}
 	<-c
 	d.service.Cleanup()

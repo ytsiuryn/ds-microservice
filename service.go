@@ -46,7 +46,7 @@ type Service struct {
 	Conn       *amqp.Connection
 	Ch         *amqp.Channel
 	Idle       bool
-	logger     ServiceLogRepresenter
+	Repr       ServiceLogRepresenter
 	dispatcher Dispatcher
 	info       ServiceInfo
 }
@@ -54,12 +54,12 @@ type Service struct {
 // NewService возвращает новую копию объекта Service.
 func NewService(logger ServiceLogRepresenter) *Service {
 	srv := &Service{
-		logger: logger,
+		Repr: logger,
 		info: ServiceInfo{
 			Subsystem:   "-",
 			Name:        "base_service",
 			Description: "base microservice"}}
-	srv.logger.FailOnError(srv.info.InitializeExecModTime(), "Service initialization")
+	srv.Repr.FailOnError(srv.info.InitializeExecModTime(), "Service initialization")
 	return srv
 }
 
@@ -68,10 +68,10 @@ func NewService(logger ServiceLogRepresenter) *Service {
 // последующих запросов.
 func (s *Service) ConnectToMessageBroker(connstr, name string) {
 	conn, err := amqp.Dial(connstr)
-	s.logger.FailOnError(err, "Failed to connect to RabbitMQ")
+	s.Repr.FailOnError(err, "Failed to connect to RabbitMQ")
 
 	ch, err := conn.Channel()
-	s.logger.FailOnError(err, "Failed to open a channel")
+	s.Repr.FailOnError(err, "Failed to open a channel")
 
 	q, err := ch.QueueDeclare(
 		name,  // name
@@ -81,14 +81,14 @@ func (s *Service) ConnectToMessageBroker(connstr, name string) {
 		false, // no-wait
 		nil,   // arguments
 	)
-	s.logger.FailOnError(err, "Failed to declare a queue")
+	s.Repr.FailOnError(err, "Failed to declare a queue")
 
 	err = ch.Qos(
 		1,     // prefetch count
 		0,     // prefetch size
 		false, // global
 	)
-	s.logger.FailOnError(err, "Failed to set QoS")
+	s.Repr.FailOnError(err, "Failed to set QoS")
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
@@ -99,7 +99,7 @@ func (s *Service) ConnectToMessageBroker(connstr, name string) {
 		false,  // no wait
 		nil,    // args
 	)
-	s.logger.FailOnError(err, "Failed to register a consumer")
+	s.Repr.FailOnError(err, "Failed to register a consumer")
 
 	s.Conn = conn
 	s.Ch = ch
@@ -115,7 +115,7 @@ func (s *Service) SetDispatcher(dispatcher Dispatcher) {
 
 // SetLogRepresenter используется для перегрузки умолчательного BaseLogRepresenter другим.
 func (s *Service) SetLogRepresenter(logger ServiceLogRepresenter) {
-	s.logger = logger
+	s.Repr = logger
 }
 
 // SetInfo устанавливает описание микросервиса, порожденного от базового.
@@ -126,8 +126,8 @@ func (s *Service) SetInfo(info ServiceInfo) {
 // ReadConfig читает содержимое файла настройки сервиса в выходную структуру.
 func (s *Service) ReadConfig(optFile string, conf interface{}) {
 	data, err := ioutil.ReadFile(optFile)
-	s.logger.FailOnError(err, "Config file")
-	s.logger.FailOnError(yaml.Unmarshal(data, conf), "Config file")
+	s.Repr.FailOnError(err, "Config file")
+	s.Repr.FailOnError(yaml.Unmarshal(data, conf), "Config file")
 }
 
 // Close закрывает соединения с RabbitMq.
@@ -139,7 +139,7 @@ func (s *Service) Close() {
 // Cleanup освобождает ресурсы и выводит сообщение о завершении работы сервиса.
 func (s *Service) Cleanup() {
 	s.Close()
-	s.logger.Info("\nstopped")
+	s.Repr.Logger().Info("\nstopped")
 }
 
 // RunCmd вызывает командам  запроса методы сервиса и возвращает результат клиенту.
@@ -159,7 +159,7 @@ func (s *Service) RunCmd(req Requester, delivery *amqp.Delivery) {
 
 // ErrorResult отправляет клиенту ответ с информацией об ошибке.
 func (s *Service) ErrorResult(delivery *amqp.Delivery, e error, context string) {
-	s.logger.LogOnError(e, context)
+	s.Repr.LogOnError(e, context)
 	json := []byte(fmt.Sprintf("{\"error\": \"%s\", \"context\": \"%s\"}", e, context))
 	s.Answer(delivery, json)
 }

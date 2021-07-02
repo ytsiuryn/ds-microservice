@@ -10,22 +10,22 @@ import (
 // входную, выходную информацию и сведения об ошибке.
 type ServiceLogRepresenter interface {
 	LogRequest(request Requester)
+	Logger() *log.Logger
 	FailOnError(err error, context string)
 	LogOnError(err error, context string)
-	Info(args ...interface{})
-	Warnf(format string, args ...interface{})
 }
 
 // BaseLogRepresenter базовый объект логгирования.
 // Обрабатывает только наименование команд запросов.
 type BaseLogRepresenter struct {
-	level log.Level
+	logger *log.Logger
+	level  log.Level
 }
 
 // LogLevel определяет уровень журналирования исходя из того является ли система запущенной
 // в Product-режиме.
 func NewBaseLogRepresenter(isProduct bool) *BaseLogRepresenter {
-	ret := &BaseLogRepresenter{}
+	ret := &BaseLogRepresenter{logger: log.New()}
 	if isProduct {
 		ret.level = log.InfoLevel
 	}
@@ -33,33 +33,28 @@ func NewBaseLogRepresenter(isProduct bool) *BaseLogRepresenter {
 	return ret
 }
 
+// Logger возвращает ссылку на объект логирования.
+func (repr *BaseLogRepresenter) Logger() *log.Logger {
+	return repr.logger
+}
+
 // Отображение сведений о выполняемом запросе.
-func (logger *BaseLogRepresenter) LogRequest(requestParser Requester) {
-	log.Debug(requestParser.Cmd() + "()")
+func (repr *BaseLogRepresenter) LogRequest(requestParser Requester) {
+	repr.logger.Debug(requestParser.Cmd() + "()")
 }
 
 // FailOnError выводит сообщение об ошибке в лог и прекращает работу микросервиса.
-func (logger *BaseLogRepresenter) FailOnError(err error, context string) {
+func (repr *BaseLogRepresenter) FailOnError(err error, context string) {
 	if err != nil {
 		debug.PrintStack()
-		log.WithField("context", context).Fatal(err)
+		repr.logger.WithField("context", context).Fatal(err)
 	}
 }
 
 // LogOnError выводит сообщение об ошибке в лог.
-func (logger *BaseLogRepresenter) LogOnError(err error, context string) {
+func (repr *BaseLogRepresenter) LogOnError(err error, context string) {
 	if err != nil {
 		debug.PrintStack()
-		log.WithField("context", context).Error(err)
+		repr.logger.WithField("context", context).Error(err)
 	}
-}
-
-// Info - хелпер для вызова аналогичного объекта логирования Info.
-func (logger *BaseLogRepresenter) Info(args ...interface{}) {
-	log.Info(args...)
-}
-
-// Warnf - хелпер для вызова аналогичного объекта логирования Warnf.
-func (logger *BaseLogRepresenter) Warnf(format string, args ...interface{}) {
-	log.Warnf(format, args...)
 }
