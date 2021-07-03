@@ -53,17 +53,10 @@ type Service struct {
 
 // NewService возвращает новую копию объекта Service.
 func NewService(logger ServiceLogRepresenter) *Service {
-	srv := &Service{
-		Repr: logger,
-		info: ServiceInfo{
-			Subsystem:   "-",
-			Name:        "base_service",
-			Description: "base microservice"}}
-	srv.Repr.FailOnError(srv.info.InitializeExecModTime(), "Service initialization")
-	return srv
+	return &Service{Repr: logger}
 }
 
-// ConnectToMessageBroker подключает микросервис к брокеру сообщений.
+// ConnectToMessageBroker подключает микросервис под именем `name` к брокеру сообщений.
 // Дополнительно go-канал обмена сообщений с брокером передается диспетчеру для обработки
 // последующих запросов.
 func (s *Service) ConnectToMessageBroker(connstr, name string) {

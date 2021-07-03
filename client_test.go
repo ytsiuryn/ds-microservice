@@ -3,10 +3,7 @@ package microservice
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"testing"
-
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -75,10 +72,10 @@ func TestUnknownServiceCommand(t *testing.T) {
 }
 
 func startTestService(ctx context.Context) {
-	logger := NewBaseLogRepresenter(false)
-	log.Info(fmt.Sprintf("%s starting..", testServiceName))
+	repr := NewBaseLogRepresenter(false)
+	repr.Logger().Printf("%s starting..", testServiceName)
 
-	srv := NewService(logger)
+	srv := NewService(repr)
 	defer srv.Cleanup() // TODO: почему не вызывается?
 
 	srv.ConnectToMessageBroker(
