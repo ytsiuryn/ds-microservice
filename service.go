@@ -106,6 +106,11 @@ func (s *Service) StartPoller(interval time.Duration) {
 	s.poller.Start()
 }
 
+// Msgs возвращает канал поставки входных сообщений от клиента.
+func (s *Service) Msgs() <-chan amqp.Delivery {
+	return s.msgs
+}
+
 // Poller возвращает ссылку на объект лимитированного по частоту обращений объекта опроса.
 func (s *Service) Poller() *WebPoller {
 	return s.poller

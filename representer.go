@@ -15,23 +15,23 @@ type RequestRepresenter interface {
 // BaseLogRepresenter базовый объект логгирования.
 // Обрабатывает только наименование команд запросов.
 type BaseLogRepresenter struct {
-	logger *DefaultLog
+	*DefaultLog
 }
 
 // LogLevel определяет уровень журналирования исходя из того является ли система запущенной
 // в Product-режиме.
 func NewBaseLogRepresenter(logger *DefaultLog) *BaseLogRepresenter {
-	repr := &BaseLogRepresenter{logger: logger}
+	repr := &BaseLogRepresenter{logger}
 	return repr
 }
 
 func (repr *BaseLogRepresenter) Log() *DefaultLog {
-	return repr.logger
+	return repr.Log()
 }
 
 // Отображение сведений о выполняемом запросе.
 func (repr *BaseLogRepresenter) LogRequest(requestParser RequestParser) {
-	repr.logger.Debug(requestParser.Cmd() + "()")
+	repr.Debug(requestParser.Cmd() + "()")
 }
 
 type DefaultLog struct {
