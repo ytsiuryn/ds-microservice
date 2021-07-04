@@ -16,8 +16,7 @@ func TestServicePing(t *testing.T) {
 
 	go startTestService(ctx)
 
-	logger := NewBaseLogRepresenter(false)
-	cl := NewRPCClient(logger)
+	cl := NewRPCClient()
 	defer cl.Close()
 
 	correlationID, data, _ := CreateCmdRequest("ping")
@@ -35,8 +34,7 @@ func TestServiceInfo(t *testing.T) {
 
 	go startTestService(ctx)
 
-	logger := NewBaseLogRepresenter(false)
-	cl := NewRPCClient(logger)
+	cl := NewRPCClient()
 	defer cl.Close()
 
 	correlationID, data, _ := CreateCmdRequest("info")
@@ -56,8 +54,7 @@ func TestUnknownServiceCommand(t *testing.T) {
 
 	go startTestService(ctx)
 
-	logger := NewBaseLogRepresenter(false)
-	cl := NewRPCClient(logger)
+	cl := NewRPCClient()
 	defer cl.Close()
 
 	correlationID, data, _ := CreateCmdRequest("x")
@@ -72,15 +69,10 @@ func TestUnknownServiceCommand(t *testing.T) {
 }
 
 func startTestService(ctx context.Context) {
-	repr := NewBaseLogRepresenter(false)
-	repr.Logger().Printf("%s starting..", testServiceName)
+	srv := NewService(testServiceName)
+	defer srv.Cleanup()
 
-	srv := NewService(repr)
-	defer srv.Cleanup() // TODO: почему не вызывается?
+	srv.ConnectToMessageBroker("amqp://guest:guest@localhost:5672/")
 
-	srv.ConnectToMessageBroker(
-		"amqp://guest:guest@localhost:5672/",
-		testServiceName)
-
-	srv.dispatcher.Dispatch()
+	srv.Dispatch()
 }

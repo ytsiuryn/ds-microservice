@@ -10,6 +10,7 @@ import (
 
 // Dispatcher принимает управление микросервисом на себя и обрабатывает поступающие запросы.
 type Dispatcher interface {
+	SetRequestRepresenter(repr RequestRepresenter)
 	Dispatch()
 }
 
@@ -17,8 +18,8 @@ type Dispatcher interface {
 type BaseDispatcher struct {
 	msgs      <-chan amqp.Delivery
 	service   Microservice
-	repr      ServiceLogRepresenter
-	requester Requester
+	requester RequestParser
+	repr      RequestRepresenter
 }
 
 // NewBaseDispatcher создает объект диспетчера микросервиса.
@@ -26,7 +27,11 @@ func NewBaseDispatcher(msgs <-chan amqp.Delivery, service Microservice) *BaseDis
 	return &BaseDispatcher{
 		msgs:      msgs,
 		service:   service,
-		requester: &BaseRequester{}}
+		requester: &BaseRequestParser{}}
+}
+
+func (d *BaseDispatcher) SetRequestRepresenter(repr RequestRepresenter) {
+	d.repr = repr
 }
 
 // Dispatch выполняет цикл обработки взодящих запросов.
@@ -38,19 +43,13 @@ func (d *BaseDispatcher) Dispatch() {
 		for delivery := range d.msgs {
 			err := d.requester.Parse(&delivery)
 			if err != nil {
-				d.service.ErrorResult(&delivery, err, "Message dispatcher")
+				d.service.AnswerWithError(&delivery, err, "Message dispatcher")
 				continue
 			}
-			if d.repr != nil {
-				d.repr.LogRequest(d.requester)
-			}
+			d.repr.LogRequest(d.requester)
 			d.service.RunCmd(d.requester, &delivery)
 		}
 	}()
-	if d.repr != nil {
-		d.repr.Logger().Info("Awaiting RPC requests")
-	}
+	d.repr.Log().Info("Awaiting RPC requests")
 	<-c
-	d.service.Cleanup()
-	os.Exit(1)
 }

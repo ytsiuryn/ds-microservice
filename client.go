@@ -15,22 +15,22 @@ type ErrorResponse struct {
 
 // RPCClient хранит состояние клиента микросервиса
 type RPCClient struct {
-	conn   *amqp.Connection
-	ch     *amqp.Channel
-	msgs   <-chan amqp.Delivery
-	q      amqp.Queue
-	logger ServiceLogRepresenter
+	conn *amqp.Connection
+	ch   *amqp.Channel
+	msgs <-chan amqp.Delivery
+	q    amqp.Queue
+	Log  *DefaultLog
 }
 
 // NewRPCClient создает новый объект клиента микросервиса.
-func NewRPCClient(logger ServiceLogRepresenter) *RPCClient {
+func NewRPCClient() *RPCClient {
 	var err error
-	cl := &RPCClient{logger: logger}
+	cl := &RPCClient{Log: NewDefaultLog()}
 	cl.conn, err = amqp.Dial("amqp://guest:guest@localhost:5672/")
-	cl.logger.FailOnError(err, "Failed to connect to RabbitMQ")
+	cl.Log.FailOnError(err, "Failed to connect to RabbitMQ")
 
 	cl.ch, err = cl.conn.Channel()
-	cl.logger.FailOnError(err, "Failed to open a channel")
+	cl.Log.FailOnError(err, "Failed to open a channel")
 
 	cl.q, err = cl.ch.QueueDeclare(
 		"",    // name
@@ -40,7 +40,7 @@ func NewRPCClient(logger ServiceLogRepresenter) *RPCClient {
 		false, // noWait
 		nil,   // arguments
 	)
-	cl.logger.FailOnError(err, "Failed to declare a queue")
+	cl.Log.FailOnError(err, "Failed to declare a queue")
 
 	cl.msgs, err = cl.ch.Consume(
 		cl.q.Name, // queue
@@ -51,7 +51,7 @@ func NewRPCClient(logger ServiceLogRepresenter) *RPCClient {
 		false,     // no-wait
 		nil,       // args
 	)
-	cl.logger.FailOnError(err, "Failed to register a consumer")
+	cl.Log.FailOnError(err, "Failed to register a consumer")
 
 	return cl
 }
@@ -71,7 +71,7 @@ func (cl *RPCClient) Request(srvName, corrID string, args []byte) {
 			ReplyTo:       cl.q.Name,
 			Body:          args,
 		})
-	cl.logger.FailOnError(err, "Failed to publish a message")
+	cl.Log.FailOnError(err, "Failed to publish a message")
 }
 
 // Result блокирует ход исполнения до момента ответа микросервиса на запрос и

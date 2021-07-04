@@ -6,8 +6,8 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Requester - интерфейс для объектов, разбирающих входные запросы от клиентов.
-type Requester interface {
+// RequestParser - интерфейс для объектов, разбирающих входные запросы от клиентов.
+type RequestParser interface {
 	Parse(d *amqp.Delivery) error
 	// Request() Request
 	Cmd() string
@@ -19,13 +19,13 @@ type BaseRequest struct {
 	Cmd string
 }
 
-// BaseRequester - базовый парсер, умеющий только извлекать команду запроса.
-type BaseRequester struct {
+// BaseRequestParser - базовый парсер, умеющий только извлекать команду запроса.
+type BaseRequestParser struct {
 	request BaseRequest
 }
 
 // ParseRequest проверяет и извлекает данные запроса.
-func (brp *BaseRequester) Parse(d *amqp.Delivery) error {
+func (brp *BaseRequestParser) Parse(d *amqp.Delivery) error {
 	if err := json.Unmarshal(d.Body, &brp.request); err != nil {
 		return err
 	}
@@ -33,6 +33,6 @@ func (brp *BaseRequester) Parse(d *amqp.Delivery) error {
 }
 
 // Cmd выводит наименование команды для последнего разобранного запроса.
-func (brp *BaseRequester) Cmd() string {
+func (brp *BaseRequestParser) Cmd() string {
 	return brp.request.Cmd
 }
