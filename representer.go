@@ -26,7 +26,7 @@ func NewBaseLogRepresenter(logger *DefaultLog) *BaseLogRepresenter {
 }
 
 func (repr *BaseLogRepresenter) Log() *DefaultLog {
-	return repr.Log()
+	return repr.DefaultLog
 }
 
 // Отображение сведений о выполняемом запросе.
