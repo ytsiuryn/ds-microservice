@@ -16,10 +16,10 @@ type Dispatcher interface {
 
 // BaseDispatcher - базовый диспетчер микросервисов.
 type BaseDispatcher struct {
-	msgs      <-chan amqp.Delivery
-	service   Microservice
-	requester RequestParser
-	repr      RequestRepresenter
+	msgs           <-chan amqp.Delivery
+	service        Microservice
+	reqParser      RequestParser
+	reqRepresenter RequestRepresenter
 }
 
 // NewBaseDispatcher создает объект диспетчера микросервиса.
@@ -27,11 +27,15 @@ func NewBaseDispatcher(msgs <-chan amqp.Delivery, service Microservice) *BaseDis
 	return &BaseDispatcher{
 		msgs:      msgs,
 		service:   service,
-		requester: &BaseRequestParser{}}
+		reqParser: &BaseRequestParser{}}
+}
+
+func (d *BaseDispatcher) SetRequestParser(parser RequestParser) {
+	d.reqParser = parser
 }
 
 func (d *BaseDispatcher) SetRequestRepresenter(repr RequestRepresenter) {
-	d.repr = repr
+	d.reqRepresenter = repr
 }
 
 // Dispatch выполняет цикл обработки взодящих запросов.
@@ -41,15 +45,15 @@ func (d *BaseDispatcher) Dispatch() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		for delivery := range d.msgs {
-			err := d.requester.Parse(&delivery)
+			err := d.reqParser.Parse(&delivery)
 			if err != nil {
 				d.service.AnswerWithError(&delivery, err, "Message dispatcher")
 				continue
 			}
-			d.repr.LogRequest(d.requester)
-			d.service.RunCmd(d.requester, &delivery)
+			d.reqRepresenter.LogRequest(d.reqParser)
+			d.service.RunCmd(d.reqParser, &delivery)
 		}
 	}()
-	d.repr.Log().Info("Awaiting RPC requests")
+	d.reqRepresenter.Log().Info("Awaiting RPC requests")
 	<-c
 }
