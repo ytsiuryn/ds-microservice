@@ -72,7 +72,7 @@ func startTestService(ctx context.Context) {
 	srv := NewService(testServiceName)
 	defer srv.Cleanup()
 
-	srv.ConnectToMessageBroker("amqp://guest:guest@localhost:5672/")
+	msgs := srv.ConnectToMessageBroker("amqp://guest:guest@localhost:5672/")
 
-	srv.Dispatch()
+	srv.Dispatch(msgs)
 }

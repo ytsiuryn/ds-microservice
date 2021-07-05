@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestOneURL(t *testing.T) {
+func TestWebPollerLoad(t *testing.T) {
 	poller := NewWebPoller(time.Second)
 	go poller.Start()
 	for _, url := range []string{"http://golang.org/", "https://golang.org/"} {

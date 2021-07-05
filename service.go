@@ -4,18 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
 	"github.com/streadway/amqp"
-	"gopkg.in/yaml.v3"
 )
 
 // Microservice - базовый интерфейс для реализации микросервисов.
 type Microservice interface {
-	ConnectToMessageBroker(connstr string)
-	RunCmd(req RequestParser, delivery *amqp.Delivery)
+	ConnectToMessageBroker(connstr string) <-chan amqp.Delivery
+	RunCmd(req *BaseRequest, delivery *amqp.Delivery)
 	Answer(delivery *amqp.Delivery, result []byte)
 	AnswerWithError(delivery *amqp.Delivery, e error, context string)
 	Cleanup()
@@ -30,7 +28,6 @@ type ServiceInfo struct {
 type Service struct {
 	conn       *amqp.Connection
 	ch         *amqp.Channel
-	msgs       <-chan amqp.Delivery
 	dispatcher Dispatcher
 	info       ServiceInfo
 	poller     *WebPoller
@@ -47,7 +44,7 @@ func NewService(srvName string) *Service {
 // ConnectToMessageBroker подключает микросервис под именем `name` к брокеру сообщений.
 // Дополнительно go-канал обмена сообщений с брокером передается диспетчеру для обработки
 // последующих запросов.
-func (s *Service) ConnectToMessageBroker(connstr string) {
+func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 	conn, err := amqp.Dial(connstr)
 	s.Log.FailOnError(err, "Failed to connect to RabbitMQ")
 
@@ -84,12 +81,13 @@ func (s *Service) ConnectToMessageBroker(connstr string) {
 
 	s.conn = conn
 	s.ch = ch
-	s.msgs = msgs
+
+	return msgs
 }
 
 // Dispatch запускает цикл опроса входящих запросов.
-func (s *Service) Dispatch() {
-	dispatcher := NewBaseDispatcher(s.msgs, s)
+func (s *Service) Dispatch(msgs <-chan amqp.Delivery) {
+	dispatcher := NewBaseDispatcher(msgs, s)
 	dispatcher.SetRequestRepresenter(NewBaseLogRepresenter(s.Log))
 	dispatcher.Dispatch()
 }
@@ -106,39 +104,25 @@ func (s *Service) StartPoller(interval time.Duration) {
 	s.poller.Start()
 }
 
-// Msgs возвращает канал поставки входных сообщений от клиента.
-func (s *Service) Msgs() <-chan amqp.Delivery {
-	return s.msgs
-}
-
 // Poller возвращает ссылку на объект лимитированного по частоту обращений объекта опроса.
 func (s *Service) Poller() *WebPoller {
 	return s.poller
 }
 
-// ReadConfig читает содержимое файла настройки сервиса в выходную структуру.
-// TODO: вынести за рамки сервиса.
-func (s *Service) ReadConfig(optFile string, conf interface{}) {
-	data, err := ioutil.ReadFile(optFile)
-	s.Log.FailOnError(err, "Config file")
-	s.Log.FailOnError(yaml.Unmarshal(data, conf), "Config file")
+// Cleanup освобождает ресурсы и выводит сообщение о завершении работы сервиса.
+func (s *Service) Cleanup() {
+	s.close()
+	s.Log.Info("\nstopped")
 }
 
-// Close закрывает соединения с RabbitMq.
-func (s *Service) Close() {
+func (s *Service) close() {
 	s.ch.Close()
 	s.conn.Close()
 }
 
-// Cleanup освобождает ресурсы и выводит сообщение о завершении работы сервиса.
-func (s *Service) Cleanup() {
-	s.Close()
-	s.Log.Info("\nstopped")
-}
-
 // RunCmd вызывает командам  запроса методы сервиса и возвращает результат клиенту.
-func (s *Service) RunCmd(req RequestParser, delivery *amqp.Delivery) {
-	switch req.Cmd() {
+func (s *Service) RunCmd(req *BaseRequest, delivery *amqp.Delivery) {
+	switch req.Cmd {
 	case "ping":
 		go s.Ping(delivery)
 	case "info":
@@ -146,7 +130,7 @@ func (s *Service) RunCmd(req RequestParser, delivery *amqp.Delivery) {
 	default:
 		go s.AnswerWithError(
 			delivery,
-			errors.New("Unknown command: "+req.Cmd()),
+			errors.New("Unknown command: "+req.Cmd),
 			"Message dispatcher")
 	}
 }

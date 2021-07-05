@@ -8,7 +8,7 @@ import (
 
 // RequestRepresenter обрабатывает для журналирования входные запросы.
 type RequestRepresenter interface {
-	LogRequest(request RequestParser)
+	LogRequest(request Request)
 	Log() *DefaultLog
 }
 
@@ -30,8 +30,8 @@ func (repr *BaseLogRepresenter) Log() *DefaultLog {
 }
 
 // Отображение сведений о выполняемом запросе.
-func (repr *BaseLogRepresenter) LogRequest(requestParser RequestParser) {
-	repr.Debug(requestParser.Cmd() + "()")
+func (repr *BaseLogRepresenter) LogRequest(request Request) {
+	repr.Debug(request.(*BaseRequest).Cmd + "()")
 }
 
 type DefaultLog struct {
