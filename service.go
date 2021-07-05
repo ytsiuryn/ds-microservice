@@ -7,17 +7,9 @@ import (
 	"os"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
-
-// Microservice - базовый интерфейс для реализации микросервисов.
-type Microservice interface {
-	ConnectToMessageBroker(connstr string) <-chan amqp.Delivery
-	RunCmd(req *BaseRequest, delivery *amqp.Delivery)
-	Answer(delivery *amqp.Delivery, result []byte)
-	AnswerWithError(delivery *amqp.Delivery, e error, context string)
-	Cleanup()
-}
 
 // ServiceInfo хранит общие сведения о микросервисе.
 type ServiceInfo struct {
@@ -26,19 +18,16 @@ type ServiceInfo struct {
 
 // Service хранит состояние микросервиса.
 type Service struct {
-	conn       *amqp.Connection
-	ch         *amqp.Channel
-	dispatcher Dispatcher
-	info       ServiceInfo
-	poller     *WebPoller
-	Log        *DefaultLog
+	conn   *amqp.Connection
+	ch     *amqp.Channel
+	info   ServiceInfo
+	poller *WebPoller
 }
 
 // NewService возвращает новую копию объекта Service.
 func NewService(srvName string) *Service {
 	return &Service{
-		info: ServiceInfo{Name: srvName},
-		Log:  NewDefaultLog()}
+		info: ServiceInfo{Name: srvName}}
 }
 
 // ConnectToMessageBroker подключает микросервис под именем `name` к брокеру сообщений.
@@ -46,10 +35,10 @@ func NewService(srvName string) *Service {
 // последующих запросов.
 func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 	conn, err := amqp.Dial(connstr)
-	s.Log.FailOnError(err, "Failed to connect to RabbitMQ")
+	FailOnError(err, "Failed to connect to RabbitMQ")
 
 	ch, err := conn.Channel()
-	s.Log.FailOnError(err, "Failed to open a channel")
+	FailOnError(err, "Failed to open a channel")
 
 	q, err := ch.QueueDeclare(
 		s.info.Name, // name
@@ -59,14 +48,14 @@ func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 		false,       // no-wait
 		nil,         // arguments
 	)
-	s.Log.FailOnError(err, "Failed to declare a queue")
+	FailOnError(err, "Failed to declare a queue")
 
 	err = ch.Qos(
 		1,     // prefetch count
 		0,     // prefetch size
 		false, // global
 	)
-	s.Log.FailOnError(err, "Failed to set QoS")
+	FailOnError(err, "Failed to set QoS")
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
@@ -77,19 +66,12 @@ func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 		false,  // no wait
 		nil,    // args
 	)
-	s.Log.FailOnError(err, "Failed to register a consumer")
+	FailOnError(err, "Failed to register a consumer")
 
 	s.conn = conn
 	s.ch = ch
 
 	return msgs
-}
-
-// Dispatch запускает цикл опроса входящих запросов.
-func (s *Service) Dispatch(msgs <-chan amqp.Delivery) {
-	dispatcher := NewBaseDispatcher(msgs, s)
-	dispatcher.SetRequestRepresenter(NewBaseLogRepresenter(s.Log))
-	dispatcher.Dispatch()
 }
 
 // SetInfo устанавливает описание микросервиса.
@@ -112,7 +94,7 @@ func (s *Service) Poller() *WebPoller {
 // Cleanup освобождает ресурсы и выводит сообщение о завершении работы сервиса.
 func (s *Service) Cleanup() {
 	s.close()
-	s.Log.Info("\nstopped")
+	log.Info("\nstopped")
 }
 
 func (s *Service) close() {
@@ -121,8 +103,8 @@ func (s *Service) close() {
 }
 
 // RunCmd вызывает командам  запроса методы сервиса и возвращает результат клиенту.
-func (s *Service) RunCmd(req *BaseRequest, delivery *amqp.Delivery) {
-	switch req.Cmd {
+func (s *Service) RunCmd(cmd string, delivery *amqp.Delivery) {
+	switch cmd {
 	case "ping":
 		go s.Ping(delivery)
 	case "info":
@@ -130,14 +112,14 @@ func (s *Service) RunCmd(req *BaseRequest, delivery *amqp.Delivery) {
 	default:
 		go s.AnswerWithError(
 			delivery,
-			errors.New("Unknown command: "+req.Cmd),
+			errors.New("Unknown command: "+cmd),
 			"Message dispatcher")
 	}
 }
 
 // ErrorResult отправляет клиенту ответ с информацией об ошибке.
 func (s *Service) AnswerWithError(delivery *amqp.Delivery, e error, context string) {
-	s.Log.LogOnError(e, context)
+	LogOnError(e, context)
 	json := []byte(fmt.Sprintf("{\"error\": \"%s\", \"context\": \"%s\"}", e, context))
 	s.Answer(delivery, json)
 }

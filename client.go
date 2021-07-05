@@ -7,6 +7,10 @@ import (
 	"github.com/streadway/amqp"
 )
 
+type BaseRequest struct {
+	Cmd string
+}
+
 // Структура хранения данных для ответа с ошибкой.
 type ErrorResponse struct {
 	Error   string `json:"error"`
@@ -19,18 +23,17 @@ type RPCClient struct {
 	ch   *amqp.Channel
 	msgs <-chan amqp.Delivery
 	q    amqp.Queue
-	Log  *DefaultLog
 }
 
 // NewRPCClient создает новый объект клиента микросервиса.
 func NewRPCClient() *RPCClient {
 	var err error
-	cl := &RPCClient{Log: NewDefaultLog()}
+	cl := &RPCClient{}
 	cl.conn, err = amqp.Dial("amqp://guest:guest@localhost:5672/")
-	cl.Log.FailOnError(err, "Failed to connect to RabbitMQ")
+	FailOnError(err, "Failed to connect to RabbitMQ")
 
 	cl.ch, err = cl.conn.Channel()
-	cl.Log.FailOnError(err, "Failed to open a channel")
+	FailOnError(err, "Failed to open a channel")
 
 	cl.q, err = cl.ch.QueueDeclare(
 		"",    // name
@@ -40,7 +43,7 @@ func NewRPCClient() *RPCClient {
 		false, // noWait
 		nil,   // arguments
 	)
-	cl.Log.FailOnError(err, "Failed to declare a queue")
+	FailOnError(err, "Failed to declare a queue")
 
 	cl.msgs, err = cl.ch.Consume(
 		cl.q.Name, // queue
@@ -51,7 +54,7 @@ func NewRPCClient() *RPCClient {
 		false,     // no-wait
 		nil,       // args
 	)
-	cl.Log.FailOnError(err, "Failed to register a consumer")
+	FailOnError(err, "Failed to register a consumer")
 
 	return cl
 }
@@ -71,7 +74,7 @@ func (cl *RPCClient) Request(srvName, corrID string, args []byte) {
 			ReplyTo:       cl.q.Name,
 			Body:          args,
 		})
-	cl.Log.FailOnError(err, "Failed to publish a message")
+	FailOnError(err, "Failed to publish a message")
 }
 
 // Result блокирует ход исполнения до момента ответа микросервиса на запрос и
