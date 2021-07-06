@@ -18,16 +18,16 @@ type ServiceInfo struct {
 
 // Service хранит состояние микросервиса.
 type Service struct {
-	conn   *amqp.Connection
-	ch     *amqp.Channel
-	info   ServiceInfo
-	poller *WebPoller
+	conn *amqp.Connection
+	ch   *amqp.Channel
+	info ServiceInfo
+	Log  *log.Logger
 }
 
 // NewService возвращает новую копию объекта Service.
 func NewService(srvName string) *Service {
 	return &Service{
-		info: ServiceInfo{Name: srvName}}
+		info: ServiceInfo{Name: srvName}, Log: log.New()}
 }
 
 // ConnectToMessageBroker подключает микросервис под именем `name` к брокеру сообщений.
@@ -79,22 +79,10 @@ func (s *Service) SetInfo(info ServiceInfo) {
 	s.info = info
 }
 
-// StartWebPoller иниуиализирует и запускает цикл обработки запросов Web ресурсов с заданной
-// цикличностью.
-func (s *Service) StartPoller(interval time.Duration) {
-	s.poller = NewWebPoller(interval)
-	s.poller.Start()
-}
-
-// Poller возвращает ссылку на объект лимитированного по частоту обращений объекта опроса.
-func (s *Service) Poller() *WebPoller {
-	return s.poller
-}
-
 // Cleanup освобождает ресурсы и выводит сообщение о завершении работы сервиса.
 func (s *Service) Cleanup() {
 	s.close()
-	log.Info("\nstopped")
+	s.Log.Infoln("stopped")
 }
 
 func (s *Service) close() {
