@@ -13,11 +13,3 @@ func FailOnError(err error, context string) {
 		log.WithField("context", context).Fatal(err)
 	}
 }
-
-// LogOnError print out an error message into log
-func LogOnError(err error, context string) {
-	if err != nil {
-		debug.PrintStack()
-		log.WithField("context", context).Error(err)
-	}
-}

@@ -70,8 +70,8 @@ func (wp *WebPoller) Load(url string, headers map[string]string) ([]byte, error)
 	return data, nil
 }
 
-// DecodeJSON загружает http ресурс и декодирует данные, предполагая JSON формат.
-func (wp *WebPoller) DecodeJSON(url string, headers map[string]string, out interface{}) error {
+// Decode загружает http ресурс и декодирует данные, предполагая JSON формат.
+func (wp *WebPoller) Decode(url string, headers map[string]string, out interface{}) error {
 	data, err := wp.Load(url, headers)
 	if err != nil {
 		return err

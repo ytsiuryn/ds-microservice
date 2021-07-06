@@ -3,8 +3,8 @@ package microservice
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
+	"runtime/debug"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -74,20 +74,21 @@ func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 	return msgs
 }
 
-// SetInfo устанавливает описание микросервиса.
-func (s *Service) SetInfo(info ServiceInfo) {
+// SetVersionInfo устанавливает описание микросервиса.
+func (s *Service) SetVersionInfo(info ServiceInfo) {
 	s.info = info
+	path, err := os.Executable()
+	s.LogOnError(err, "Getting microservice executable error")
+	fi, err := os.Stat(path)
+	s.LogOnError(err, "Getting microservice executable stat info error")
+	s.info.Date = fi.ModTime().Format(time.UnixDate)
 }
 
 // Cleanup освобождает ресурсы и выводит сообщение о завершении работы сервиса.
 func (s *Service) Cleanup() {
-	s.close()
-	s.Log.Infoln("stopped")
-}
-
-func (s *Service) close() {
 	s.ch.Close()
 	s.conn.Close()
+	s.Log.Infoln("stopped")
 }
 
 // RunCmd вызывает командам  запроса методы сервиса и возвращает результат клиенту.
@@ -107,15 +108,15 @@ func (s *Service) RunCmd(cmd string, delivery *amqp.Delivery) {
 
 // ErrorResult отправляет клиенту ответ с информацией об ошибке.
 func (s *Service) AnswerWithError(delivery *amqp.Delivery, e error, context string) {
-	LogOnError(e, context)
-	json := []byte(fmt.Sprintf("{\"error\": \"%s\", \"context\": \"%s\"}", e, context))
+	s.LogOnError(e, context)
+	json := []byte("{\"error\": \"" + e.Error() + "\", \"context\": \"" + context + "\"}")
 	s.Answer(delivery, json)
 }
 
 // Answer отправляет клиенту ответ `result` в JSON формате в соответствии с идентификатором
 // запроса CorrelationId в параметре delivery.
 func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
-	err := s.ch.Publish(
+	if err := s.ch.Publish(
 		"",
 		delivery.ReplyTo,
 		false,
@@ -124,8 +125,7 @@ func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
 			ContentType:   "application/json",
 			CorrelationId: delivery.CorrelationId,
 			Body:          result,
-		})
-	if err != nil {
+		}); err != nil {
 		s.AnswerWithError(delivery, err, "Answer's publishing error")
 		return
 	}
@@ -137,7 +137,7 @@ func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
 func (s *Service) Info(delivery *amqp.Delivery) {
 	json, err := json.Marshal(s.info)
 	if err != nil {
-		s.AnswerWithError(delivery, err, fmt.Sprintf("Structure conversion error for %+v", s.info))
+		s.AnswerWithError(delivery, err, "Version structure conversion error")
 		return
 	}
 	s.Answer(delivery, json)
@@ -148,17 +148,10 @@ func (s *Service) Ping(delivery *amqp.Delivery) {
 	s.Answer(delivery, []byte{})
 }
 
-// InitializeExecModTime считывает сведения о последней модификации исполняемого файла
-// микросервиса и записывает их в структуру объекта.
-func (i ServiceInfo) InitializeExecModTime() error {
-	path, err := os.Executable()
+// LogOnError print out an error message into log
+func (s *Service) LogOnError(err error, context string) {
 	if err != nil {
-		return errors.New("Getting microservice executable error")
+		debug.PrintStack()
+		log.WithField("context", context).Error(err)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		return errors.New("Getting microservice executable stat info error")
-	}
-	i.Date = info.ModTime().Format(time.UnixDate)
-	return nil
 }
