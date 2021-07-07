@@ -24,9 +24,9 @@ type WebPoller struct {
 }
 
 // NewWebPoller формирует новый объект WebPoller.
-func NewWebPoller(pollingInterval time.Duration) *WebPoller {
+func NewWebPoller(interval time.Duration) *WebPoller {
 	return &WebPoller{
-		ticker:    time.NewTicker(pollingInterval),
+		ticker:    time.NewTicker(interval),
 		pending:   make(chan *WebResource),
 		Completed: make(chan *WebResource)}
 }
@@ -105,8 +105,10 @@ func loadResource(resource *WebResource) {
 		return
 	}
 
-	for k, v := range resource.InHeaders {
-		req.Header.Add(k, v)
+	if resource.InHeaders != nil {
+		for k, v := range resource.InHeaders {
+			req.Header.Add(k, v)
+		}
 	}
 
 	response, err := client.Do(req)

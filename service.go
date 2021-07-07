@@ -16,6 +16,12 @@ type ServiceInfo struct {
 	Subsystem, Name, Description, Date string
 }
 
+// Структура хранения данных для ответа с ошибкой.
+type ErrorResponse struct {
+	Error   string `json:"error"`
+	Context string `json:"context"`
+}
+
 // Service хранит состояние микросервиса.
 type Service struct {
 	conn *amqp.Connection
@@ -72,6 +78,10 @@ func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 	s.ch = ch
 
 	return msgs
+}
+
+func (s *Service) VersionInfo() ServiceInfo {
+	return s.info
 }
 
 // SetVersionInfo устанавливает описание микросервиса.

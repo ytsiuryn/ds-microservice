@@ -8,13 +8,7 @@ import (
 )
 
 type BaseRequest struct {
-	Cmd string
-}
-
-// Структура хранения данных для ответа с ошибкой.
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Context string `json:"context"`
+	Cmd string `json:"cmd"`
 }
 
 // RPCClient хранит состояние клиента микросервиса
@@ -62,7 +56,7 @@ func NewRPCClient() *RPCClient {
 // Request выполняет запрос к микросервису по имени `srvName`.
 // Запрос квитируется уникальным идентификатором corrID.
 // Поле `args` содержит JSON представление запроса.
-func (cl *RPCClient) Request(srvName, corrID string, args []byte) {
+func (cl *RPCClient) Request(srvName, correlationID string, args []byte) {
 	err := cl.ch.Publish(
 		"",      // exchange
 		srvName, // routing key
@@ -70,7 +64,7 @@ func (cl *RPCClient) Request(srvName, corrID string, args []byte) {
 		false,   // immediate
 		amqp.Publishing{
 			ContentType:   "application/json",
-			CorrelationId: corrID,
+			CorrelationId: correlationID,
 			ReplyTo:       cl.q.Name,
 			Body:          args,
 		})
@@ -99,18 +93,18 @@ func (cl *RPCClient) Close() {
 func CreateCmdRequest(cmd string) (string, []byte, error) {
 	correlationID, _ := uuid.NewV4()
 	request := BaseRequest{cmd}
-	reqData, err := json.Marshal(&request)
+	data, err := json.Marshal(&request)
 	if err != nil {
 		return "", nil, err
 	}
-	return correlationID.String(), reqData, nil
+	return correlationID.String(), data, nil
 }
 
 // ParseErrorAnswer разбирает ответ с описанием ошибки.
 func ParseErrorAnswer(data []byte) (*ErrorResponse, error) {
-	ret := &ErrorResponse{}
-	if err := json.Unmarshal(data, &ret); err != nil {
+	resp := &ErrorResponse{}
+	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, err
 	}
-	return ret, nil
+	return resp, nil
 }
