@@ -24,7 +24,7 @@ type Service struct {
 
 // NewService возвращает новую копию объекта Service.
 func NewService(srvName string) *Service {
-	return &Service{Log: log.New()}
+	return &Service{Log: log.New(), Name: srvName}
 }
 
 // ConnectToMessageBroker подключает микросервис под именем `name` к брокеру сообщений.
