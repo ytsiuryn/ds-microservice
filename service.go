@@ -1,7 +1,6 @@
 package microservice
 
 import (
-	"encoding/json"
 	"errors"
 	"runtime/debug"
 
@@ -19,14 +18,13 @@ type ErrorResponse struct {
 type Service struct {
 	conn *amqp.Connection
 	ch   *amqp.Channel
-	info ServiceInfo
 	Log  *log.Logger
+	Name string
 }
 
 // NewService возвращает новую копию объекта Service.
 func NewService(srvName string) *Service {
-	return &Service{
-		info: ServiceInfo{Name: srvName}, Log: log.New()}
+	return &Service{Log: log.New()}
 }
 
 // ConnectToMessageBroker подключает микросервис под именем `name` к брокеру сообщений.
@@ -40,12 +38,12 @@ func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 	FailOnError(err, "Failed to open a channel")
 
 	q, err := ch.QueueDeclare(
-		s.info.Name, // name
-		false,       // durable
-		false,       // delete when unused
-		false,       // exclusive
-		false,       // no-wait
-		nil,         // arguments
+		s.Name, // name
+		false,  // durable
+		false,  // delete when unused
+		false,  // exclusive
+		false,  // no-wait
+		nil,    // arguments
 	)
 	FailOnError(err, "Failed to declare a queue")
 
@@ -73,28 +71,6 @@ func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 	return msgs
 }
 
-func (s *Service) ServiceInfo() ServiceInfo {
-	return s.info
-}
-
-// SetServiceInfo устанавливает описание микросервиса.
-func (s *Service) SetServiceInfo(info ServiceInfo) {
-	s.info = ServiceInfo{}
-	FailOnError(s.info.Init(info), "Microservice getting info")
-}
-
-// BuildTime возвращает форматированную строку даты и времени сборки.
-func (s *Service) BuildTime(fmt string) string {
-	return s.info.BuildTime(fmt)
-}
-
-// ModDeps возвращает отфильтрованный список используемых в микросервисе модулей с информацией
-// об их версии.
-// Если параметр `modNames` пустой или равен nil, возвращается описание по всем модулям.
-func (s *Service) ModDeps(modNames []string) map[string]string {
-	return s.info.ModDeps(modNames)
-}
-
 // Cleanup освобождает ресурсы и выводит сообщение о завершении работы сервиса.
 func (s *Service) Cleanup() {
 	s.ch.Close()
@@ -107,8 +83,6 @@ func (s *Service) RunCmd(cmd string, delivery *amqp.Delivery) {
 	switch cmd {
 	case "ping":
 		go s.Ping(delivery)
-	case "info":
-		go s.Info(delivery)
 	default:
 		go s.AnswerWithError(
 			delivery,
@@ -141,17 +115,6 @@ func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
 		return
 	}
 	delivery.Ack(false)
-}
-
-// Info отправляет клиенту общую информацию о микросервисе на основании данных структуры
-// `ServiceInfo`.
-func (s *Service) Info(delivery *amqp.Delivery) {
-	json, err := json.Marshal(s.info)
-	if err != nil {
-		s.AnswerWithError(delivery, err, "Version structure conversion error")
-		return
-	}
-	s.Answer(delivery, json)
 }
 
 // Ping сигнализирует о работоспособности микросервиса с пустым ответом.

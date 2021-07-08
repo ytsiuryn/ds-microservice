@@ -26,15 +26,6 @@ func TestBaseServiceCommands(t *testing.T) {
 		t.Fail()
 	}
 
-	correlationID, data, _ = CreateCmdRequest("info")
-	cl.Request(testServiceName, correlationID, data)
-	info := ServiceInfo{}
-	respData = cl.Result(correlationID)
-	json.Unmarshal(respData, &info)
-	if info.Name != testServiceName {
-		t.Fail()
-	}
-
 	correlationID, data, _ = CreateCmdRequest("x")
 	cl.Request(testServiceName, correlationID, data)
 	vInfo, _ := ParseErrorAnswer(cl.Result(correlationID))
