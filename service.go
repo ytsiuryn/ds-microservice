@@ -3,18 +3,11 @@ package microservice
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"runtime/debug"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
-
-// ServiceInfo хранит общие сведения о микросервисе.
-type ServiceInfo struct {
-	Subsystem, Name, Description, Date string
-}
 
 // Структура хранения данных для ответа с ошибкой.
 type ErrorResponse struct {
@@ -80,18 +73,26 @@ func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 	return msgs
 }
 
-func (s *Service) VersionInfo() ServiceInfo {
+func (s *Service) ServiceInfo() ServiceInfo {
 	return s.info
 }
 
-// SetVersionInfo устанавливает описание микросервиса.
-func (s *Service) SetVersionInfo(info ServiceInfo) {
-	s.info = info
-	path, err := os.Executable()
-	s.LogOnError(err, "Getting microservice executable error")
-	fi, err := os.Stat(path)
-	s.LogOnError(err, "Getting microservice executable stat info error")
-	s.info.Date = fi.ModTime().Format(time.UnixDate)
+// SetServiceInfo устанавливает описание микросервиса.
+func (s *Service) SetServiceInfo(info ServiceInfo) {
+	s.info = ServiceInfo{}
+	FailOnError(s.info.Init(info), "Microservice getting info")
+}
+
+// BuildTime возвращает форматированную строку даты и времени сборки.
+func (s *Service) BuildTime(fmt string) string {
+	return s.info.BuildTime(fmt)
+}
+
+// ModDeps возвращает отфильтрованный список используемых в микросервисе модулей с информацией
+// об их версии.
+// Если параметр `modNames` пустой или равен nil, возвращается описание по всем модулям.
+func (s *Service) ModDeps(modNames []string) map[string]string {
+	return s.info.ModDeps(modNames)
 }
 
 // Cleanup освобождает ресурсы и выводит сообщение о завершении работы сервиса.
