@@ -111,10 +111,9 @@ func loadResource(resource *WebResource) {
 		}
 	}
 
-	response, err := client.Do(req)
-	if err != nil {
+	if response, err := client.Do(req); err != nil {
 		resource.Err = err
-		return
+	} else {
+		resource.Response = response
 	}
-	resource.Response = response
 }

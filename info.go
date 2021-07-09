@@ -9,6 +9,8 @@ import (
 	collection "github.com/ytsiuryn/go-collection"
 )
 
+// BuildTime формирует строку даты создания/последней модификации исполняемого файла сервиса
+// в указанном формате `fmt`.
 func BuildTime(fmt string) string {
 	path, err := os.Executable()
 	if err != nil {
@@ -21,6 +23,8 @@ func BuildTime(fmt string) string {
 	return fi.ModTime().Format(fmt)
 }
 
+// Modules формирует строку из значений <module_path>/<version>, разделенных запятой.
+// Список может быть фильтрован за счет конкретной подборки модулей в `modNames`.
 func Modules(modNames []string) string {
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
