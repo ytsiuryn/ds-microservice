@@ -33,7 +33,7 @@ func Modules(modNames []string) string {
 	lst := []string{}
 	for _, dep := range bi.Deps {
 		if len(modNames) == 0 || collection.ContainsStr(dep.Path, modNames) {
-			lst = append(lst, fmt.Sprintf("%s/%s", dep.Path, dep.Version))
+			lst = append(lst, fmt.Sprintf("%s@%s", dep.Path, dep.Version))
 		}
 	}
 	return strings.Join(lst, ", ")

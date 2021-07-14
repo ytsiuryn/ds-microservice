@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Описывает входной URL и результаты его обработки.
@@ -21,6 +23,7 @@ type WebPoller struct {
 	ticker    *time.Ticker
 	pending   chan *WebResource
 	Completed chan *WebResource
+	Log       *log.Logger
 }
 
 // NewWebPoller формирует новый объект WebPoller.
@@ -38,6 +41,7 @@ func (wp *WebPoller) SetPollingInterval(interval time.Duration) {
 
 // Add добавляет в очередь обработки новый URL.
 func (wp *WebPoller) Add(url, method string, headers map[string]string) {
+	wp.Log.Debug(url)
 	wp.pending <- &WebResource{URL: url, InHeaders: headers}
 }
 
