@@ -111,10 +111,12 @@ func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
 			CorrelationId: delivery.CorrelationId,
 			Body:          result,
 		}); err != nil {
-		s.AnswerWithError(delivery, err, "Answer's publishing error")
-		return
+		FailOnError(err, "Answer's publishing error")
 	}
-	delivery.Ack(false)
+	err := delivery.Ack(false)
+	if err != nil {
+		FailOnError(err, "Acknowledge error")
+	}
 }
 
 // Ping сигнализирует о работоспособности микросервиса с пустым ответом.
