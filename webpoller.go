@@ -78,6 +78,9 @@ func (wp *WebPoller) Load(url string, headers map[string]string) ([]byte, error)
 func (wp *WebPoller) Decode(url string, headers map[string]string, out interface{}) error {
 	data, err := wp.Load(url, headers)
 	if err != nil {
+		if wp.Log != nil {
+			wp.Log.Error(string(data))
+		}
 		return err
 	}
 	return json.Unmarshal(data, &out)

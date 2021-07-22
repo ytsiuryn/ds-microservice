@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testServiceName = "test_service"
@@ -19,20 +22,17 @@ func TestBaseServiceCommands(t *testing.T) {
 	cl := NewRPCClient()
 	defer cl.Close()
 
-	correlationID, data, _ := CreateCmdRequest("ping")
+	correlationID, data, err := CreateCmdRequest("ping")
+	require.NoError(t, err)
 	cl.Request(testServiceName, correlationID, data)
 	respData := cl.Result(correlationID)
-	if len(respData) != 0 {
-		t.Fail()
-	}
+	assert.Len(t, respData, 0)
 
 	correlationID, data, _ = CreateCmdRequest("x")
 	cl.Request(testServiceName, correlationID, data)
 	vInfo, _ := ParseErrorAnswer(cl.Result(correlationID))
 	// {"error": "Unknown command: x", "context": "Message dispatcher"}
-	if vInfo.Error != "Unknown command: x" {
-		t.Fail()
-	}
+	assert.Equal(t, vInfo.Error, "Unknown command: x")
 }
 
 func startTestService(ctx context.Context) {
