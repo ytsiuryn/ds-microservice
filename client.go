@@ -90,21 +90,21 @@ func (cl *RPCClient) Close() {
 
 // CreateCmdRequest формирует данные для запроса команды `cmd` в виде CorrelationID и тела
 // JSON.
-func CreateCmdRequest(cmd string) (string, []byte, error) {
+func CreateCmdRequest(cmd string) (_ string, data []byte, err error) {
 	correlationID, _ := uuid.NewV4()
 	request := BaseRequest{cmd}
-	data, err := json.Marshal(&request)
+	data, err = json.Marshal(&request)
 	if err != nil {
-		return "", nil, err
+		return
 	}
 	return correlationID.String(), data, nil
 }
 
 // ParseErrorAnswer разбирает ответ с описанием ошибки.
-func ParseErrorAnswer(data []byte) (*ErrorResponse, error) {
+func ParseErrorAnswer(data []byte) (_ *ErrorResponse, err error) {
 	resp := &ErrorResponse{}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		return nil, err
+	if err = json.Unmarshal(data, &resp); err != nil {
+		return
 	}
 	return resp, nil
 }

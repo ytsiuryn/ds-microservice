@@ -10,8 +10,8 @@ import (
 
 // Структура хранения данных для ответа с ошибкой.
 type ErrorResponse struct {
-	Error   string `json:"error"`
-	Context string `json:"context"`
+	Error   string `json:"error,omitempty"`
+	Context string `json:"context,omitempty"`
 }
 
 // Service хранит состояние микросервиса.

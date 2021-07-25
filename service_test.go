@@ -26,13 +26,14 @@ func TestBaseServiceCommands(t *testing.T) {
 	require.NoError(t, err)
 	cl.Request(testServiceName, correlationID, data)
 	respData := cl.Result(correlationID)
-	assert.Len(t, respData, 0)
+	assert.Empty(t, respData)
 
 	correlationID, data, _ = CreateCmdRequest("x")
 	cl.Request(testServiceName, correlationID, data)
-	vInfo, _ := ParseErrorAnswer(cl.Result(correlationID))
+	resp, err := ParseErrorAnswer(cl.Result(correlationID))
+	require.NoError(t, err)
 	// {"error": "Unknown command: x", "context": "Message dispatcher"}
-	assert.Equal(t, vInfo.Error, "Unknown command: x")
+	assert.NotEmpty(t, resp.Error)
 }
 
 func startTestService(ctx context.Context) {
