@@ -7,6 +7,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// BaseRequest описывает формат команд без параметров.
 type BaseRequest struct {
 	Cmd string `json:"cmd"`
 }

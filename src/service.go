@@ -2,13 +2,13 @@ package microservice
 
 import (
 	"errors"
-	"runtime/debug"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
-// Структура хранения данных для ответа с ошибкой.
+// ErrorResponse хранит данные для ответа с ошибкой.
+// Используется для тестовых целей.
 type ErrorResponse struct {
 	Error   string `json:"error,omitempty"`
 	Context string `json:"context,omitempty"`
@@ -91,15 +91,16 @@ func (s *Service) RunCmd(cmd string, delivery *amqp.Delivery) {
 	}
 }
 
-// ErrorResult отправляет клиенту ответ с информацией об ошибке.
+// AnswerWithError отправляет клиенту ответ с информацией об ошибке.
 func (s *Service) AnswerWithError(delivery *amqp.Delivery, e error, context string) {
-	s.LogOnError(e, context)
+	s.LogOnErrorWithContext(e, context)
 	json := []byte("{\"error\": \"" + e.Error() + "\", \"context\": \"" + context + "\"}")
 	s.Answer(delivery, json)
 }
 
 // Answer отправляет клиенту ответ `result` в JSON формате в соответствии с идентификатором
 // запроса CorrelationId в параметре delivery.
+// В случае ошибки отправки работа сервиса прекращается.
 func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
 	if err := s.ch.Publish(
 		"",
@@ -122,12 +123,4 @@ func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
 // Ping сигнализирует о работоспособности микросервиса с пустым ответом.
 func (s *Service) Ping(delivery *amqp.Delivery) {
 	s.Answer(delivery, []byte{})
-}
-
-// LogOnError print out an error message into log
-func (s *Service) LogOnError(err error, context string) {
-	if err != nil {
-		debug.PrintStack()
-		log.WithField("context", context).Error(err)
-	}
 }

@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Описывает входной URL и результаты его обработки.
+// WebResource описывает входной URL и результаты его обработки.
 type WebResource struct {
 	URL       string
 	Method    string
@@ -19,6 +19,7 @@ type WebResource struct {
 	Err       error
 }
 
+// WebPoller содержит данные для организации периодического опроса внешних ресурсов.
 type WebPoller struct {
 	ticker    *time.Ticker
 	pending   chan *WebResource
