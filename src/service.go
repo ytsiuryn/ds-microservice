@@ -18,6 +18,7 @@ type ErrorResponse struct {
 type Service struct {
 	conn *amqp.Connection
 	ch   *amqp.Channel
+	q    amqp.Queue
 	Log  *log.Logger
 	Name string
 }
@@ -31,13 +32,15 @@ func NewService(srvName string) *Service {
 // Дополнительно go-канал обмена сообщений с брокером передается диспетчеру для обработки
 // последующих запросов.
 func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
-	conn, err := amqp.Dial(connstr)
+	var err error
+
+	s.conn, err = amqp.Dial(connstr)
 	FailOnError(err, "Failed to connect to RabbitMQ")
 
-	ch, err := conn.Channel()
+	s.ch, err = s.conn.Channel()
 	FailOnError(err, "Failed to open a channel")
 
-	q, err := ch.QueueDeclare(
+	s.q, err = s.ch.QueueDeclare(
 		s.Name, // name
 		false,  // durable
 		false,  // delete when unused
@@ -47,26 +50,23 @@ func (s *Service) ConnectToMessageBroker(connstr string) <-chan amqp.Delivery {
 	)
 	FailOnError(err, "Failed to declare a queue")
 
-	err = ch.Qos(
+	err = s.ch.Qos(
 		1,     // prefetch count
 		0,     // prefetch size
 		false, // global
 	)
 	FailOnError(err, "Failed to set QoS")
 
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		false,  // auto ack
-		false,  // exclusive
-		false,  // no local
-		false,  // no wait
-		nil,    // args
+	msgs, err := s.ch.Consume(
+		s.q.Name, // queue
+		"",       // consumer
+		false,    // auto ack
+		false,    // exclusive
+		false,    // no local
+		false,    // no wait
+		nil,      // args
 	)
 	FailOnError(err, "Failed to register a consumer")
-
-	s.conn = conn
-	s.ch = ch
 
 	return msgs
 }
