@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
-	"strings"
 
 	collection "github.com/ytsiuryn/go-collection"
 )
@@ -23,18 +22,17 @@ func BuildTime(fmt string) string {
 	return fi.ModTime().Format(fmt)
 }
 
-// Modules формирует строку из значений <module_path>/<version>, разделенных запятой.
+// Modules возвращает список строк вида <module_path>@<version>.
 // Список может быть фильтрован за счет конкретной подборки модулей в `modNames`.
-func Modules(modNames []string) string {
+func Modules(modNames ...string) (lst []string) {
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
-		return ""
+		return
 	}
-	lst := []string{}
 	for _, dep := range bi.Deps {
 		if len(modNames) == 0 || collection.ContainsStr(dep.Path, modNames) {
 			lst = append(lst, fmt.Sprintf("%s@%s", dep.Path, dep.Version))
 		}
 	}
-	return strings.Join(lst, ", ")
+	return
 }

@@ -102,7 +102,7 @@ func (s *Service) AnswerWithError(delivery *amqp.Delivery, e error, context stri
 // запроса CorrelationId в параметре delivery.
 // В случае ошибки отправки работа сервиса прекращается.
 func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
-	if err := s.ch.Publish(
+	err := s.ch.Publish(
 		"",
 		delivery.ReplyTo,
 		false,
@@ -111,13 +111,10 @@ func (s *Service) Answer(delivery *amqp.Delivery, result []byte) {
 			ContentType:   "application/json",
 			CorrelationId: delivery.CorrelationId,
 			Body:          result,
-		}); err != nil {
-		FailOnError(err, "Answer's publishing error")
-	}
-	err := delivery.Ack(false)
-	if err != nil {
-		FailOnError(err, "Acknowledge error")
-	}
+		})
+	FailOnError(err, "Answer's publishing error")
+
+	FailOnError(delivery.Ack(false), "Acknowledge error")
 }
 
 // Ping сигнализирует о работоспособности микросервиса с пустым ответом.
