@@ -1,8 +1,8 @@
+// Модуль реализации схемы публикатор/подписчик с использованием RabbitMQ.
+
 package microservice
 
 import (
-	"log"
-
 	"github.com/streadway/amqp"
 )
 
@@ -61,8 +61,8 @@ func (pub *Publisher) Connect(connStr string) {
 
 // Close освобождает ресурсы Emitter.
 func (pub *Publisher) Close() {
-	pub.conn.Close()
 	pub.ch.Close()
+	pub.conn.Close()
 }
 
 // Emit отправляет сообщение подписчикам.
@@ -80,7 +80,6 @@ func (pub *Publisher) Emit(contentType string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	log.Printf(" [x] <- %s", data)
 	return nil
 }
 
@@ -124,8 +123,8 @@ func (sub *Subscriber) Connect(connStr string) {
 
 // Close освобождает ресурсы подписчика по завершении его работы.
 func (sub *Subscriber) Close() {
-	sub.conn.Close()
 	sub.ch.Close()
+	sub.conn.Close()
 }
 
 // Receive в цикле принимает сообщения от издателя и пересылает их в предоставленный выходной канал.
@@ -145,7 +144,6 @@ func (sub *Subscriber) Receive(out chan<- amqp.Delivery) {
 	go func() {
 		for d := range msgs {
 			out <- d
-			log.Printf(" [x] %s <-", d.Body)
 		}
 	}()
 	<-forever

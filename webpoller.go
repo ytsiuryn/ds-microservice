@@ -1,3 +1,13 @@
+// Модуль периодического опроса http ресурса.
+//
+// Функционал не будет работать корректно, если http-сервер
+// не обрабатывает запросы последовательно.
+
+// TODO: добавить в данные ресурса ID запроса (см. CreateCmdRequest()) и изменить структуру
+// Completed для произвольной обработки ответов:
+// клиент в начале формирования запроса получает Cmd Ref и затем опрашивает Completed  в поиске
+// подходящего ответа
+
 package microservice
 
 import (
@@ -19,7 +29,7 @@ type WebResource struct {
 	Err       error
 }
 
-// WebPoller содержит данные для организации периодического опроса внешних ресурсов.
+// WebPoller организует поток данных для запросов внешних ресурсов.
 type WebPoller struct {
 	ticker    *time.Ticker
 	pending   chan *WebResource
@@ -40,13 +50,13 @@ func (wp *WebPoller) SetPollingInterval(interval time.Duration) {
 	wp.ticker.Reset(interval)
 }
 
-// Add добавляет в очередь обработки новый URL.
+// Add добавляет в очередь обработки новый http-ресурс.
 func (wp *WebPoller) Add(url, method string, headers map[string]string) {
 	wp.Log.Debug(url)
 	wp.pending <- &WebResource{URL: url, InHeaders: headers}
 }
 
-// Head выполняет команду "HEAD" возвращает объект WebResource с объектом ответа http.Response.
+// Head дожидается выполнения команды "HEAD" с возвратом объекта http.
 func (wp *WebPoller) Head(url string, headers map[string]string) *WebResource {
 	wp.Add(url, "HEAD", headers)
 	return <-wp.Completed
@@ -58,7 +68,7 @@ func (wp *WebPoller) Get(url string, headers map[string]string) *WebResource {
 	return <-wp.Completed
 }
 
-// Load возвращает содержимое тела ответа по http ресурсу.
+// Load возвращает содержимое тела http ресурса.
 func (wp *WebPoller) Load(url string, headers map[string]string) ([]byte, error) {
 	wp.Add(url, "GET", headers)
 
@@ -75,8 +85,8 @@ func (wp *WebPoller) Load(url string, headers map[string]string) ([]byte, error)
 	return data, nil
 }
 
-// Decode загружает http ресурс и декодирует данные, предполагая JSON формат.
-func (wp *WebPoller) Decode(url string, headers map[string]string, out interface{}) error {
+// DecodeJSON загружает http ресурс и декодирует JSON данные ресурса.
+func (wp *WebPoller) DecodeJSON(url string, headers map[string]string, out interface{}) error {
 	data, err := wp.Load(url, headers)
 	if err != nil {
 		if wp.Log != nil {
@@ -105,6 +115,7 @@ func (wp *WebPoller) Start() {
 	}()
 }
 
+// Синхронный запрос к http-ресурсу.
 func loadResource(resource *WebResource) {
 	client := http.Client{}
 	req, err := http.NewRequest(resource.Method, resource.URL, nil)

@@ -1,3 +1,5 @@
+// Модуль базового RPC клиента, построенного на основе функциональности данного пакета.
+
 package microservice
 
 import (
@@ -57,7 +59,7 @@ func NewRPCClient() *RPCClient {
 // Request выполняет запрос к микросервису по имени `srvName`.
 // Запрос квитируется уникальным идентификатором corrID.
 // Поле `args` содержит JSON представление запроса.
-func (cl *RPCClient) Request(srvName, correlationID string, args []byte) {
+func (cl *RPCClient) Request(srvName, corrID string, args []byte) {
 	err := cl.ch.Publish(
 		"",      // exchange
 		srvName, // routing key
@@ -65,7 +67,7 @@ func (cl *RPCClient) Request(srvName, correlationID string, args []byte) {
 		false,   // immediate
 		amqp.Publishing{
 			ContentType:   "application/json",
-			CorrelationId: correlationID,
+			CorrelationId: corrID,
 			ReplyTo:       cl.q.Name,
 			Body:          args,
 		})
@@ -76,6 +78,7 @@ func (cl *RPCClient) Request(srvName, correlationID string, args []byte) {
 // возвращает сам ответ в виде JSON.
 func (cl *RPCClient) Result(correlationID string) []byte {
 	for d := range cl.msgs {
+		// TODO: а если это другой запрос, кто-то не получит ответ?
 		if correlationID == d.CorrelationId {
 			return d.Body
 		}
@@ -104,7 +107,7 @@ func CreateCmdRequest(cmd string) (_ string, data []byte, err error) {
 // ParseErrorAnswer разбирает ответ с описанием ошибки.
 func ParseErrorAnswer(data []byte) (_ *ErrorResponse, err error) {
 	resp := &ErrorResponse{}
-	if err = json.Unmarshal(data, &resp); err != nil {
+	if err = json.Unmarshal(data, resp); err != nil {
 		return
 	}
 	return resp, nil

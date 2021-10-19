@@ -1,3 +1,9 @@
+// Модуль сбора общих сведений о микросервисе:
+//
+// - даты последней модификации
+//
+// - списка используемых модулей и их версий
+
 package microservice
 
 import (
@@ -23,7 +29,7 @@ func BuildTime(fmt string) string {
 }
 
 // Modules возвращает список строк вида <module_path>@<version>.
-// Список может быть фильтрован за счет конкретной подборки модулей в `modNames`.
+// Список может быть отфильтрован конкретной выборкой модулей в `modNames`.
 func Modules(modNames ...string) (lst []string) {
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
